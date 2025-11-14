@@ -1,19 +1,21 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import toast from "react-hot-toast";
-import { Save, Plus, Calendar } from "lucide-react";
+import { Save, Plus, Calendar, Trash2 } from "lucide-react";
 
 const Attendance = () => {
   const [workers, setWorkers] = useState([]);
+  const [projects, setProjects] = useState([]); // ✅ NEW: project list
   const [attendance, setAttendance] = useState([]);
   const [loadingWorkers, setLoadingWorkers] = useState(true);
   const [loadingAttendance, setLoadingAttendance] = useState(true);
   const [bulkAttendance, setBulkAttendance] = useState([]);
   const [dateRange, setDateRange] = useState({ from: "", to: "" });
   const [selectedWorker, setSelectedWorker] = useState(null);
+  const [projectFilter, setProjectFilter] = useState("All"); // ✅ NEW
   const [today] = useState(new Date().toISOString().split("T")[0]);
 
-  // Fetch all workers
+  // 🔵 Fetch workers
   const fetchWorkers = async () => {
     try {
       setLoadingWorkers(true);
@@ -28,6 +30,7 @@ const Attendance = () => {
         date: today,
         project: w.project ? { id: w.project.id } : null,
       }));
+
       setBulkAttendance(initBulk);
     } catch (err) {
       console.error(err);
@@ -37,14 +40,25 @@ const Attendance = () => {
     }
   };
 
-  // Fetch attendance (backend filtering)
+  // 🔵 Fetch projects (NEW)
+  const fetchProjects = async () => {
+    try {
+      const res = await axios.get("http://localhost:8080/api/projects");
+      setProjects(res.data || []);
+    } catch (err) {
+      console.error(err);
+      toast.error("❌ Failed to fetch projects");
+    }
+  };
+
+  // 🔵 Fetch attendance
   const fetchAttendance = async (customRange) => {
     try {
       setLoadingAttendance(true);
+
       const range = customRange || dateRange;
       let url = "http://localhost:8080/api/attendance";
 
-      // Only add query params if both from & to are selected
       if (range.from && range.to) {
         url += `?from=${range.from}&to=${range.to}`;
       }
@@ -52,10 +66,10 @@ const Attendance = () => {
       const res = await axios.get(url);
       const data = res.data || [];
 
-      // Sort by worker name
       data.sort((a, b) =>
         (a.worker?.name || "").localeCompare(b.worker?.name || "")
       );
+
       setAttendance(data);
     } catch (err) {
       console.error(err);
@@ -67,23 +81,27 @@ const Attendance = () => {
 
   useEffect(() => {
     fetchWorkers();
-    fetchAttendance({ from: today, to: today }); // default: today
+    fetchProjects(); // ✅ NEW
+    fetchAttendance({ from: today, to: today });
   }, []);
 
-  // Bulk attendance submit
+  // 🟢 BULK attendance
   const handleMarkBulkAttendance = async () => {
     try {
       const toastId = toast.loading("Marking attendance...");
+
       const toMark = bulkAttendance.filter(
         (w) =>
           !attendance.some(
             (a) => a.worker?.id === w.worker.id && a.date === today
           )
       );
+
       if (!toMark.length) {
         toast("All workers already have attendance for today!");
         return;
       }
+
       await axios.post("http://localhost:8080/api/attendance/bulk", toMark);
       toast.success("✅ Attendance marked!", { id: toastId });
       fetchAttendance({ from: today, to: today });
@@ -93,7 +111,7 @@ const Attendance = () => {
     }
   };
 
-  // Update individual attendance
+  // 🟢 Update attendance
   const handleUpdateAttendance = async (att) => {
     try {
       const toastId = toast.loading("Updating...");
@@ -106,19 +124,32 @@ const Attendance = () => {
     }
   };
 
-  // Mark individual worker attendance
+  // 🟢 NEW: Delete attendance
+  const handleDeleteAttendance = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this record?")) return;
+    try {
+      const toastId = toast.loading("Deleting...");
+      await axios.delete(`http://localhost:8080/api/attendance/${id}`);
+      toast.success("🗑️ Deleted", { id: toastId });
+      fetchAttendance(dateRange);
+    } catch (err) {
+      console.error(err);
+      toast.error("❌ Failed to delete");
+    }
+  };
+
+  // 🟢 Mark individual
   const handleMarkIndividual = async () => {
     if (!selectedWorker) {
       toast.error("Select a worker first");
       return;
     }
 
-    // Check if attendance already exists for today
     const alreadyMarked = attendance.some(
       (a) => a.worker?.id === selectedWorker.id && a.date === today
     );
     if (alreadyMarked) {
-      toast("Attendance already marked for this worker today!");
+      toast("Attendance already marked!");
       return;
     }
 
@@ -136,8 +167,6 @@ const Attendance = () => {
       const toastId = toast.loading("Marking attendance...");
       await axios.post("http://localhost:8080/api/attendance", payload);
       toast.success("✅ Attendance marked!", { id: toastId });
-
-      // Refresh attendance list
       fetchAttendance({ from: today, to: today });
     } catch (err) {
       console.error(err);
@@ -145,11 +174,19 @@ const Attendance = () => {
     }
   };
 
+  // 🟢 Apply project filter (NEW)
+  const filteredAttendance =
+    projectFilter === "All"
+      ? attendance
+      : attendance.filter((a) => a.project?.name === projectFilter);
+
   return (
     <div className="space-y-8 p-4">
-      {/* MARK ATTENDANCE CARD */}
+
+      {/* ------------------ BULK ATTENDANCE ------------------ */}
       <div className="bg-white shadow rounded p-4">
         <h2 className="text-xl font-bold mb-2">Mark Attendance - {today}</h2>
+
         {loadingWorkers ? (
           <p>Loading workers...</p>
         ) : (
@@ -161,9 +198,10 @@ const Attendance = () => {
                   <th className="px-4 py-2 border">Worker</th>
                   <th className="px-4 py-2 border">Project</th>
                   <th className="px-4 py-2 border">Status</th>
-                  <th className="px-4 py-2 border">Overtime Hours</th>
+                  <th className="px-4 py-2 border">OT Hours</th>
                 </tr>
               </thead>
+
               <tbody>
                 {bulkAttendance.map((w, idx) => (
                   <tr key={w.worker.id} className="hover:bg-gray-50">
@@ -179,15 +217,16 @@ const Attendance = () => {
                         className="border rounded px-2 py-1"
                         value={w.status}
                         onChange={(e) => {
-                          const newData = [...bulkAttendance];
-                          newData[idx].status = e.target.value;
-                          setBulkAttendance(newData);
+                          const updated = [...bulkAttendance];
+                          updated[idx].status = e.target.value;
+                          setBulkAttendance(updated);
                         }}
                       >
                         <option value="Present">Present</option>
                         <option value="Absent">Absent</option>
                       </select>
                     </td>
+
                     <td className="px-4 py-2 border">
                       <input
                         type="number"
@@ -195,10 +234,10 @@ const Attendance = () => {
                         className="border rounded px-2 py-1 w-20"
                         value={w.overtimeHours}
                         onChange={(e) => {
-                          const newData = [...bulkAttendance];
-                          newData[idx].overtimeHours =
+                          const updated = [...bulkAttendance];
+                          updated[idx].overtimeHours =
                             parseFloat(e.target.value) || 0;
-                          setBulkAttendance(newData);
+                          setBulkAttendance(updated);
                         }}
                       />
                     </td>
@@ -206,6 +245,7 @@ const Attendance = () => {
                 ))}
               </tbody>
             </table>
+
             <button
               onClick={handleMarkBulkAttendance}
               disabled={attendance.some((a) => a.date === today)}
@@ -221,11 +261,10 @@ const Attendance = () => {
         )}
       </div>
 
-      {/* INDIVIDUAL WORKER */}
+      {/* ------------------ INDIVIDUAL ------------------ */}
       <div className="bg-white shadow rounded p-4">
-        <h2 className="text-xl font-bold mb-2">
-          Mark Individual Worker Attendance
-        </h2>
+        <h2 className="text-xl font-bold mb-2">Mark Individual Worker</h2>
+
         <div className="flex items-center gap-2 mb-2">
           <select
             className="border rounded px-2 py-1"
@@ -243,6 +282,7 @@ const Attendance = () => {
               </option>
             ))}
           </select>
+
           <button
             onClick={handleMarkIndividual}
             disabled={attendance.some(
@@ -261,10 +301,11 @@ const Attendance = () => {
         </div>
       </div>
 
-      {/* VIEW ATTENDANCE */}
+      {/* ------------------ VIEW ATTENDANCE ------------------ */}
       <div className="bg-white shadow rounded p-4">
         <h2 className="text-xl font-bold mb-2">View Attendance</h2>
-        <div className="flex gap-2 mb-3">
+
+        <div className="flex flex-wrap gap-2 mb-3">
           <input
             type="date"
             className="border rounded px-2 py-1"
@@ -273,18 +314,23 @@ const Attendance = () => {
               setDateRange({ ...dateRange, from: e.target.value })
             }
           />
+
           <input
             type="date"
             className="border rounded px-2 py-1"
             value={dateRange.to}
-            onChange={(e) => setDateRange({ ...dateRange, to: e.target.value })}
+            onChange={(e) =>
+              setDateRange({ ...dateRange, to: e.target.value })
+            }
           />
+
           <button
             onClick={() => fetchAttendance()}
             className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
           >
             Get Attendance
           </button>
+
           <button
             onClick={() => {
               setDateRange({ from: today, to: today });
@@ -294,6 +340,20 @@ const Attendance = () => {
           >
             <Calendar size={16} /> Today
           </button>
+
+          {/* 🔵 NEW: Project Filter */}
+          <select
+            value={projectFilter}
+            onChange={(e) => setProjectFilter(e.target.value)}
+            className="border rounded px-2 py-1"
+          >
+            <option value="All">All Projects</option>
+            {projects.map((p) => (
+              <option key={p.id} value={p.name}>
+                {p.name}
+              </option>
+            ))}
+          </select>
         </div>
 
         {loadingAttendance ? (
@@ -308,20 +368,21 @@ const Attendance = () => {
                   <th className="px-4 py-2 border">Project</th>
                   <th className="px-4 py-2 border">Date</th>
                   <th className="px-4 py-2 border">Status</th>
-                  <th className="px-4 py-2 border">Overtime Hours</th>
+                  <th className="px-4 py-2 border">OT</th>
                   <th className="px-4 py-2 border">Total Pay</th>
                   <th className="px-4 py-2 border">Actions</th>
                 </tr>
               </thead>
+
               <tbody>
-                {attendance.length === 0 ? (
+                {filteredAttendance.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="text-center p-2">
-                      No attendance records found.
+                    <td colSpan={8} className="text-center p-3">
+                      No attendance records.
                     </td>
                   </tr>
                 ) : (
-                  attendance.map((att) => (
+                  filteredAttendance.map((att) => (
                     <tr key={att.id} className="hover:bg-gray-50">
                       <td className="px-4 py-2 border">{att.worker?.id}</td>
                       <td className="px-4 py-2 border">{att.worker?.name}</td>
@@ -329,23 +390,23 @@ const Attendance = () => {
                         {att.project?.name || "-"}
                       </td>
                       <td className="px-4 py-2 border">{att.date}</td>
+
                       <td className="px-4 py-2 border">
                         <select
                           className="border rounded px-2 py-1"
                           value={att.status}
                           onChange={(e) => {
-                            const newAttendance = [...attendance];
-                            const idx = newAttendance.findIndex(
-                              (a) => a.id === att.id
-                            );
-                            newAttendance[idx].status = e.target.value;
-                            setAttendance(newAttendance);
+                            const updated = [...attendance];
+                            const idx = updated.findIndex((a) => a.id === att.id);
+                            updated[idx].status = e.target.value;
+                            setAttendance(updated);
                           }}
                         >
                           <option value="Present">Present</option>
                           <option value="Absent">Absent</option>
                         </select>
                       </td>
+
                       <td className="px-4 py-2 border">
                         <input
                           type="number"
@@ -353,23 +414,31 @@ const Attendance = () => {
                           className="border rounded px-2 py-1 w-20"
                           value={att.overtimeHours}
                           onChange={(e) => {
-                            const newAttendance = [...attendance];
-                            const idx = newAttendance.findIndex(
-                              (a) => a.id === att.id
-                            );
-                            newAttendance[idx].overtimeHours =
+                            const updated = [...attendance];
+                            const idx = updated.findIndex((a) => a.id === att.id);
+                            updated[idx].overtimeHours =
                               parseFloat(e.target.value) || 0;
-                            setAttendance(newAttendance);
+                            setAttendance(updated);
                           }}
                         />
                       </td>
+
                       <td className="px-4 py-2 border">{att.totalPay}</td>
-                      <td className="px-4 py-2 border">
+
+                      <td className="px-4 py-2 border flex gap-2">
                         <button
                           onClick={() => handleUpdateAttendance(att)}
-                          className="flex items-center gap-1 px-2 py-1 rounded bg-green-600 hover:bg-green-700 text-white"
+                          className="px-2 py-1 bg-green-600 hover:bg-green-700 text-white rounded flex items-center gap-1"
                         >
-                          <Save size={16} /> Save
+                          <Save size={14} /> Save
+                        </button>
+
+                        {/* 🔴 DELETE BUTTON */}
+                        <button
+                          onClick={() => handleDeleteAttendance(att.id)}
+                          className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white rounded flex items-center gap-1"
+                        >
+                          <Trash2 size={14} /> Delete
                         </button>
                       </td>
                     </tr>

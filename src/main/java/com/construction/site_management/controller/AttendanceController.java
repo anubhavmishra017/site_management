@@ -71,7 +71,8 @@ public class AttendanceController {
             } else {
                 list = attendanceService.getAllAttendance();
             }
-            if (list.isEmpty()) return ResponseEntity.noContent().build();
+            if (list.isEmpty())
+                return ResponseEntity.noContent().build();
             return ResponseEntity.ok(list);
         } catch (DateTimeParseException e) {
             return ResponseEntity.badRequest().build();
@@ -92,7 +93,8 @@ public class AttendanceController {
             } else {
                 list = attendanceService.getAttendanceByWorker(workerId);
             }
-            if (list.isEmpty()) return ResponseEntity.noContent().build();
+            if (list.isEmpty())
+                return ResponseEntity.noContent().build();
             return ResponseEntity.ok(list);
         } catch (DateTimeParseException e) {
             return ResponseEntity.badRequest().build();
@@ -113,11 +115,18 @@ public class AttendanceController {
             } else {
                 list = attendanceService.getAttendanceByProject(projectId);
             }
-            if (list.isEmpty()) return ResponseEntity.noContent().build();
+            if (list.isEmpty())
+                return ResponseEntity.noContent().build();
             return ResponseEntity.ok(list);
         } catch (DateTimeParseException e) {
             return ResponseEntity.badRequest().build();
         }
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteAttendance(@PathVariable Long id) {
+        attendanceService.deleteAttendance(id);
+        return ResponseEntity.noContent().build();
     }
 
     // DELETE ATTENDANCE BY WORKER

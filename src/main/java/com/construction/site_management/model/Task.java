@@ -2,7 +2,6 @@ package com.construction.site_management.model;
 
 import jakarta.persistence.*;
 import lombok.*;
-
 import java.time.LocalDate;
 
 @Entity
@@ -16,10 +15,10 @@ public class Task {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable=false)
+    @Column(nullable = false)
     private String taskName;
 
-    @Column(length=500)
+    @Column(length = 500)
     private String description;
 
     @ManyToOne
@@ -30,9 +29,9 @@ public class Task {
     @JoinColumn(name = "worker_id", nullable = false)
     private Worker worker;
 
-    private LocalDate startDate;
-    private LocalDate endDate;
+    // NEW FIELD (Deadline)
+    private LocalDate deadline;
 
-    @Column(nullable=false)
+    @Column(nullable = false)
     private String status;
 }

@@ -20,8 +20,8 @@ public class AttendanceService {
     private final ProjectRepository projectRepository;
 
     public AttendanceService(AttendanceRepository attendanceRepository,
-                             WorkerRepository workerRepository,
-                             ProjectRepository projectRepository) {
+            WorkerRepository workerRepository,
+            ProjectRepository projectRepository) {
         this.attendanceRepository = attendanceRepository;
         this.workerRepository = workerRepository;
         this.projectRepository = projectRepository;
@@ -74,13 +74,15 @@ public class AttendanceService {
         Attendance existing = attendanceRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Attendance not found with ID: " + id));
 
-        if (attendance.getStatus() != null) existing.setStatus(attendance.getStatus());
+        if (attendance.getStatus() != null)
+            existing.setStatus(attendance.getStatus());
         existing.setOvertimeHours(attendance.getOvertimeHours());
 
         // Recalculate total pay
         double totalPay = 0.0;
         if ("Present".equalsIgnoreCase(existing.getStatus())) {
-            totalPay = existing.getWorker().getRatePerDay() + (existing.getOvertimeHours() * (existing.getWorker().getRatePerDay() / 8));
+            totalPay = existing.getWorker().getRatePerDay()
+                    + (existing.getOvertimeHours() * (existing.getWorker().getRatePerDay() / 8));
         }
         existing.setTotalPay(totalPay);
 
@@ -115,6 +117,10 @@ public class AttendanceService {
     // Fetch by project & worker
     public List<Attendance> getAttendanceByProjectAndWorker(Long projectId, Long workerId) {
         return attendanceRepository.findByProjectIdAndWorkerId(projectId, workerId);
+    }
+
+    public void deleteAttendance(Long id) {
+        attendanceRepository.deleteById(id);
     }
 
     @Transactional
