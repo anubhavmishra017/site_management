@@ -4,29 +4,45 @@
 @tailwind utilities;
 
 /* =============================
-   GOOGLE TRANSLATE HIDDEN STYLES
+   GOOGLE TRANSLATE SAFE STYLES
    ============================= */
 
-/* Hide Google Translate top banner */
+/* Hide the top translation banner */
 .goog-te-banner-frame.skiptranslate {
   display: none !important;
 }
+
 body {
   top: 0 !important;
 }
 
-/* Hide Google Translate dropdown */
-.goog-te-gadget {
+/* Hide Google "Powered by Google" branding text */
+.goog-logo-link {
+  display: none !important;
+}
+.goog-te-gadget span {
   display: none !important;
 }
 
-/* Disable underline + fix injected elements */
+/* Hide the Google Translate bottom toolbar (if injected) */
+.goog-te-banner {
+  display: none !important;
+}
+
+/* Prevent Google Translate from adding background highlight */
 .goog-text-highlight {
   background: none !important;
   box-shadow: none !important;
 }
 
-/* This prevents layout shifts from injected spans */
-font {
-  background: none !important;
+/* Prevent layout shifts from injected spans */
+.goog-te-balloon-frame {
+  display: none !important;
+}
+.notranslate {
+  translate: no;
+}
+
+.notranslate * {
+  translate: no;
 }
