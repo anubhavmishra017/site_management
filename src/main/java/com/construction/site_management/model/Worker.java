@@ -20,6 +20,13 @@ public class Worker {
     private String phone;
     private double ratePerDay;
 
+    // AUTH FIELDS (new)
+    @Column(length = 255)
+    private String password; // bcrypt-hashed
+
+    @Column(name = "must_reset_password")
+    private Boolean mustResetPassword = true; // defaults true
+
     @JsonProperty("aadhaarNumber") // Ensures compatibility with frontend
     private String aadharNumber;
 

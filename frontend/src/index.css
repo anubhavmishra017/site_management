@@ -2,3 +2,31 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* =============================
+   GOOGLE TRANSLATE HIDDEN STYLES
+   ============================= */
+
+/* Hide Google Translate top banner */
+.goog-te-banner-frame.skiptranslate {
+  display: none !important;
+}
+body {
+  top: 0 !important;
+}
+
+/* Hide Google Translate dropdown */
+.goog-te-gadget {
+  display: none !important;
+}
+
+/* Disable underline + fix injected elements */
+.goog-text-highlight {
+  background: none !important;
+  box-shadow: none !important;
+}
+
+/* This prevents layout shifts from injected spans */
+font {
+  background: none !important;
+}

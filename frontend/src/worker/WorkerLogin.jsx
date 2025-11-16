@@ -1,22 +1,48 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 import toast from "react-hot-toast";
+import { setWorker } from "./workerAuth";
 
 const WorkerLogin = () => {
   const navigate = useNavigate();
-  const [workerId, setWorkerId] = useState("");
+  const [phone, setPhone] = useState("");
+  const [password, setPassword] = useState("");
 
-  const handleLogin = () => {
-    if (!workerId) {
-      toast.error("Enter your Worker ID");
+  const handleLogin = async () => {
+    if (!phone || !password) {
+      toast.error("Enter phone and password");
       return;
     }
 
-    // For now just redirect
-    // In future: verify from backend
-    localStorage.setItem("workerId", workerId);
-    toast.success("Login successful!");
-    navigate("/worker/dashboard");
+    try {
+      const { data } = await axios.post("http://localhost:8080/api/auth/worker/login", {
+        phone,
+        password,
+      });
+
+      // data: { worker: {...}, mustResetPassword: true/false }
+      const { worker, mustResetPassword } = data;
+      if (!worker) {
+        toast.error("Login failed");
+        return;
+      }
+
+      // store full worker object
+      const workerToStore = { ...worker, phone }; // include phone for convenience
+      setWorker(workerToStore);
+
+      if (mustResetPassword) {
+        toast("First-time login — please reset your password");
+        navigate("/worker/reset-password");
+      } else {
+        toast.success("Login successful");
+        navigate("/worker/dashboard");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Invalid phone or password");
+    }
   };
 
   return (
@@ -26,9 +52,17 @@ const WorkerLogin = () => {
 
         <input
           type="text"
-          placeholder="Enter Worker ID"
-          value={workerId}
-          onChange={(e) => setWorkerId(e.target.value)}
+          placeholder="Phone number"
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+          className="border w-full px-3 py-2 rounded mb-3"
+        />
+
+        <input
+          type="password"
+          placeholder="Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
           className="border w-full px-3 py-2 rounded mb-4"
         />
 

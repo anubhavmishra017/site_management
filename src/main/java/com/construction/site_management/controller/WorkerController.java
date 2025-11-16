@@ -9,7 +9,6 @@ import com.construction.site_management.service.WorkerService;
 
 @RestController
 @RequestMapping("/api/workers")
-@CrossOrigin(origins = "http://localhost:5173")
 public class WorkerController {
     
     private final WorkerService workerService;

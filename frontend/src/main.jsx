@@ -5,7 +5,7 @@ import { Toaster } from "react-hot-toast";
 import Layout from "./components/Layout";
 import "./index.css";
 
-// ✅ Lazy load pages for better performance
+/* ===== ADMIN (lazy loaded) ===== */
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Workers = lazy(() => import("./pages/Workers"));
 const Projects = lazy(() => import("./pages/Projects"));
@@ -13,7 +13,16 @@ const Attendance = lazy(() => import("./pages/Attendance"));
 const Tasks = lazy(() => import("./pages/Tasks"));
 const Settings = lazy(() => import("./pages/Settings"));
 
-// ✅ Fallback while loading components
+/* ===== WORKER PANEL IMPORTS (added safely) ===== */
+import WorkerLogin from "./worker/WorkerLogin";
+import WorkerResetPassword from "./worker/WorkerResetPassword";
+import WorkerDashboard from "./worker/WorkerDashboard";
+import WorkerAttendance from "./worker/WorkerAttendance";
+import WorkerTasks from "./worker/WorkerTasks";
+import WorkerPayments from "./worker/WorkerPayments";
+import ProtectedWorkerRoute from "./worker/ProtectedWorkerRoute";
+
+/* ===== Loading Screen ===== */
 function LoadingScreen() {
   return (
     <div className="flex items-center justify-center h-screen text-gray-500 text-lg">
@@ -22,7 +31,7 @@ function LoadingScreen() {
   );
 }
 
-// ✅ Error Boundary (handles crashes gracefully)
+/* ===== Error Boundary ===== */
 class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
@@ -46,12 +55,16 @@ class ErrorBoundary extends React.Component {
   }
 }
 
+/* ===== ROOT RENDERING ===== */
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <BrowserRouter>
       <ErrorBoundary>
         <Suspense fallback={<LoadingScreen />}>
+
           <Routes>
+
+            {/* ================= ADMIN ROUTES ================= */}
             <Route path="/" element={<Layout />}>
               <Route index element={<Dashboard />} />
               <Route path="workers" element={<Workers />} />
@@ -60,12 +73,57 @@ ReactDOM.createRoot(document.getElementById("root")).render(
               <Route path="tasks" element={<Tasks />} />
               <Route path="settings" element={<Settings />} />
             </Route>
+
+            {/* ================= WORKER ROUTES ================= */}
+            <Route path="/worker/login" element={<WorkerLogin />} />
+
+            <Route
+              path="/worker/reset-password"
+              element={<WorkerResetPassword />}
+            />
+
+            <Route
+              path="/worker/dashboard"
+              element={
+                <ProtectedWorkerRoute>
+                  <WorkerDashboard />
+                </ProtectedWorkerRoute>
+              }
+            />
+
+            <Route
+              path="/worker/attendance"
+              element={
+                <ProtectedWorkerRoute>
+                  <WorkerAttendance />
+                </ProtectedWorkerRoute>
+              }
+            />
+
+            <Route
+              path="/worker/tasks"
+              element={
+                <ProtectedWorkerRoute>
+                  <WorkerTasks />
+                </ProtectedWorkerRoute>
+              }
+            />
+
+            <Route
+              path="/worker/payments"
+              element={
+                <ProtectedWorkerRoute>
+                  <WorkerPayments />
+                </ProtectedWorkerRoute>
+              }
+            />
+
           </Routes>
+
         </Suspense>
       </ErrorBoundary>
     </BrowserRouter>
 
-    {/* ✅ Toast notifications */}
     <Toaster position="top-right" reverseOrder={false} />
   </React.StrictMode>
 );

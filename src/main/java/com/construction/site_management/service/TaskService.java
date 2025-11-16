@@ -14,14 +14,14 @@ import com.construction.site_management.repository.WorkerRepository;
 
 @Service
 public class TaskService {
-    
+
     private final TaskRepository taskRepository;
     private final ProjectRepository projectRepository;
     private final WorkerRepository workerRepository;
 
     public TaskService(TaskRepository taskRepository,
-                       ProjectRepository projectRepository,
-                       WorkerRepository workerRepository) {
+            ProjectRepository projectRepository,
+            WorkerRepository workerRepository) {
         this.taskRepository = taskRepository;
         this.projectRepository = projectRepository;
         this.workerRepository = workerRepository;
@@ -59,6 +59,12 @@ public class TaskService {
                 .orElseThrow(() -> new RuntimeException("Task not found with ID: " + id));
     }
 
+    public List<Task> getTasksByWorker(Long workerId) {
+        Worker worker = workerRepository.findById(workerId)
+                .orElseThrow(() -> new RuntimeException("Worker not found with ID: " + workerId));
+        return taskRepository.findByWorker(worker);
+    }
+
     // UPDATE TASK
     public Task updateTask(Long id, Task updatedTask) {
         Task task = getTaskById(id);
@@ -81,7 +87,15 @@ public class TaskService {
         return taskRepository.save(task);
     }
 
-    public String deleteTask(Long id){
+    public Task updateTaskStatus(Long id, String newStatus) {
+        Task task = taskRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Task not found with ID: " + id));
+
+        task.setStatus(newStatus);
+        return taskRepository.save(task);
+    }
+
+    public String deleteTask(Long id) {
         Task task = getTaskById(id);
         taskRepository.delete(task);
         return "Task deleted successfully with ID: " + id;

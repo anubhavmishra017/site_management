@@ -13,7 +13,6 @@ import lombok.AllArgsConstructor;
 
 @RestController
 @RequestMapping("/api/projects")
-@CrossOrigin(origins = "http://localhost:5173")
 @AllArgsConstructor
 public class ProjectController {
 

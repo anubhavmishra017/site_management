@@ -1,6 +1,7 @@
 package com.construction.site_management.controller;
 
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -10,9 +11,8 @@ import com.construction.site_management.service.TaskService;
 
 @RestController
 @RequestMapping("/api/tasks")
-@CrossOrigin(origins = "http://localhost:5173")
 public class TaskController {
-    
+
     private final TaskService taskService;
 
     public TaskController(TaskService taskService) {
@@ -21,7 +21,7 @@ public class TaskController {
 
     // CREATE TASK (JSON only)
     @PostMapping
-    public ResponseEntity<Task> createTask(@RequestBody Task task){
+    public ResponseEntity<Task> createTask(@RequestBody Task task) {
         return ResponseEntity.ok(taskService.createTask(task));
     }
 
@@ -29,6 +29,20 @@ public class TaskController {
     @GetMapping
     public ResponseEntity<List<Task>> getAllTasks() {
         return ResponseEntity.ok(taskService.getAllTasks());
+    }
+
+    @GetMapping("/worker/{workerId}")
+    public ResponseEntity<List<Task>> getTasksByWorker(@PathVariable Long workerId) {
+        return ResponseEntity.ok(taskService.getTasksByWorker(workerId));
+    }
+
+    @PatchMapping("/{id}/status")
+    public ResponseEntity<Task> updateTaskStatus(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> req) {
+        String newStatus = req.get("status");
+        Task updated = taskService.updateTaskStatus(id, newStatus);
+        return ResponseEntity.ok(updated);
     }
 
     // GET ONE TASK

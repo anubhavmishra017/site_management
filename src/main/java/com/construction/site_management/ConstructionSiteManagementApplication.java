@@ -9,5 +9,4 @@ public class ConstructionSiteManagementApplication {
 	public static void main(String[] args) {
 		SpringApplication.run(ConstructionSiteManagementApplication.class, args);
 	}
-
 }
