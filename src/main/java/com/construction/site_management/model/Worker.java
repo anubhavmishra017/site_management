@@ -3,6 +3,8 @@ package com.construction.site_management.model;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDate;
+import java.util.List;
+
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 @Entity
@@ -39,4 +41,17 @@ public class Worker {
     private Project project;
 
     private String role;
+
+    @OneToMany(mappedBy = "worker", cascade = CascadeType.ALL, orphanRemoval = true)
+@com.fasterxml.jackson.annotation.JsonIgnore
+private List<Attendance> attendanceList;
+
+@OneToMany(mappedBy = "worker", cascade = CascadeType.ALL, orphanRemoval = true)
+@com.fasterxml.jackson.annotation.JsonIgnore
+private List<Payment> payments;
+
+@OneToMany(mappedBy = "worker", cascade = CascadeType.ALL, orphanRemoval = true)
+@com.fasterxml.jackson.annotation.JsonIgnore
+private List<Task> tasks;
+
 }

@@ -1,8 +1,10 @@
 import Sidebar from "./Sidebar";
-import { Outlet, useLocation } from "react-router-dom";
+import { Outlet, useLocation, useNavigate } from "react-router-dom";
+import toast from "react-hot-toast";
 
 const Layout = () => {
   const location = useLocation();
+  const navigate = useNavigate();
 
   // Map current path to page title
   const pageTitles = {
@@ -11,10 +13,18 @@ const Layout = () => {
     "/projects": "Projects",
     "/tasks": "Tasks",
     "/attendance": "Attendance",
+    "/payments": "Payments",
     "/settings": "Settings",
   };
 
   const currentTitle = pageTitles[location.pathname] || "Construction Site Management";
+
+  // ✅ REAL LOGOUT FUNCTION
+  const handleLogout = () => {
+    localStorage.removeItem("admin"); // remove admin auth
+    toast.success("Logged out successfully");
+    navigate("/admin/login"); // redirect to login page
+  };
 
   return (
     // 🔥 This wrapper prevents Google Translate from touching Admin Panel
@@ -28,9 +38,11 @@ const Layout = () => {
             <h1 className="text-xl font-semibold">{currentTitle}</h1>
 
             <div className="flex items-center space-x-4">
+
+              {/* ✅ FIXED LOGOUT BUTTON */}
               <button
                 className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-all duration-200"
-                onClick={() => alert('Logout functionality coming soon!')}
+                onClick={handleLogout}
               >
                 Logout
               </button>

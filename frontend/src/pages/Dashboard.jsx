@@ -7,8 +7,12 @@ import {
   Calendar,
   Wrench,
   TrendingUp,
-  FileSpreadsheet,
+  IndianRupee,
+  ArrowDownCircle,
+  ArrowUpCircle,
+  Trophy,
 } from "lucide-react";
+
 import {
   BarChart,
   Bar,
@@ -21,6 +25,8 @@ import {
   Pie,
   Cell,
   Legend,
+  LineChart,
+  Line,
 } from "recharts";
 
 const Dashboard = ({ refreshKey }) => {
@@ -35,13 +41,21 @@ const Dashboard = ({ refreshKey }) => {
     averageDailyAttendance: 0,
   });
 
-  // ✅ New Task Summary State
   const [taskSummary, setTaskSummary] = useState({
     totalTasks: 0,
     pending: 0,
     inProgress: 0,
     completed: 0,
     overdue: 0,
+  });
+
+  const [finance, setFinance] = useState({
+    totalSalary: 0,
+    totalAdvance: 0,
+    balance: 0,
+    salaryMonthly: [],
+    advanceMonthly: [],
+    topPaidWorkers: [],
   });
 
   const [projectProgress, setProjectProgress] = useState([
@@ -52,7 +66,6 @@ const Dashboard = ({ refreshKey }) => {
 
   const COLORS = ["#10b981", "#3b82f6", "#f59e0b"];
 
-  // Fetch dashboard summary + tasks summary
   const fetchDashboardSummary = async () => {
     try {
       const { data } = await axios.get("http://localhost:8080/api/dashboard/summary");
@@ -66,6 +79,7 @@ const Dashboard = ({ refreshKey }) => {
         totalAttendanceRecords: data.totalAttendanceRecords,
         totalOvertimeHours: data.totalOvertimeHours,
         averageDailyAttendance: data.averageDailyAttendance,
+        weeklyAttendance: data.weeklyAttendance,
       });
 
       setProjectProgress([
@@ -73,27 +87,23 @@ const Dashboard = ({ refreshKey }) => {
         { name: "In Progress", value: data.activeProjects },
         { name: "Pending", value: data.pendingProjects },
       ]);
-
-    } catch (error) {
-      console.error("Error fetching dashboard summary:", error);
+    } catch {
       toast.error("❌ Failed to load dashboard summary");
     }
 
-    // ✅ Fetch Task Summary
     try {
       const taskRes = await axios.get("http://localhost:8080/api/tasks");
       const tasks = taskRes.data || [];
 
       const today = new Date();
-      const todayDate = new Date(
-        today.getFullYear(),
-        today.getMonth(),
-        today.getDate()
-      );
+      today.setHours(0, 0, 0, 0);
 
-      const overdue = tasks.filter(
-        (t) => t.deadline && new Date(t.deadline) < todayDate
-      ).length;
+      const overdue = tasks.filter((t) => {
+        if (!t.deadline) return false;
+        const deadlineDate = new Date(t.deadline);
+        deadlineDate.setHours(0, 0, 0, 0);
+        return deadlineDate < today && t.status !== "Completed";
+      }).length;
 
       setTaskSummary({
         totalTasks: tasks.length,
@@ -102,57 +112,19 @@ const Dashboard = ({ refreshKey }) => {
         completed: tasks.filter((t) => t.status === "Completed").length,
         overdue,
       });
-    } catch (error) {
-      console.error("Error fetching task summary:", error);
+    } catch {}
+
+    try {
+      const resFin = await axios.get("http://localhost:8080/api/payments/summary");
+      setFinance(resFin.data);
+    } catch {
+      toast.error("❌ Finance summary failed");
     }
   };
 
   useEffect(() => {
     fetchDashboardSummary();
   }, [refreshKey]);
-
-  // Existing Stat Cards + Task Cards added
-  const statsCards = [
-    { title: "Total Workers", value: summary.totalWorkers, icon: Users, color: "bg-blue-500" },
-    { title: "Total Projects", value: summary.totalProjects, icon: ClipboardList, color: "bg-purple-500" },
-    { title: "Active Projects", value: summary.activeProjects, icon: ClipboardList, color: "bg-green-500" },
-    { title: "Completed Projects", value: summary.completedProjects, icon: ClipboardList, color: "bg-blue-300" },
-    { title: "Pending Projects", value: summary.pendingProjects, icon: ClipboardList, color: "bg-yellow-500" },
-    { title: "Attendance Records", value: summary.totalAttendanceRecords, icon: Calendar, color: "bg-orange-500" },
-    { title: "Overtime Hours", value: summary.totalOvertimeHours, icon: Wrench, color: "bg-red-500" },
-    {
-      title: "Avg Daily Attendance",
-      value: summary.averageDailyAttendance.toFixed(2),
-      icon: TrendingUp,
-      color: "bg-teal-500",
-    },
-
-    // ⭐ NEW TASK CARDS
-    {
-      title: "Total Tasks",
-      value: taskSummary.totalTasks,
-      icon: ClipboardList,
-      color: "bg-indigo-500",
-    },
-    {
-      title: "Pending Tasks",
-      value: taskSummary.pending,
-      icon: ClipboardList,
-      color: "bg-yellow-500",
-    },
-    {
-      title: "In Progress",
-      value: taskSummary.inProgress,
-      icon: ClipboardList,
-      color: "bg-blue-500",
-    },
-    {
-      title: "Overdue Tasks",
-      value: taskSummary.overdue,
-      icon: ClipboardList,
-      color: "bg-red-600",
-    },
-  ];
 
   const weeklyAttendance = summary.weeklyAttendance || [
     { day: "Mon", attendance: 0 },
@@ -164,119 +136,134 @@ const Dashboard = ({ refreshKey }) => {
     { day: "Sun", attendance: 0 },
   ];
 
+  const financeChartData = Array.from({ length: 6 }, (_, i) => {
+    const month = new Date();
+    month.setMonth(month.getMonth() - (5 - i));
+    const monthNum = month.getMonth() + 1;
+
+    const sal = finance.salaryMonthly.find((d) => d[0] === monthNum);
+    const adv = finance.advanceMonthly.find((d) => d[0] === monthNum);
+
+    return {
+      month: month.toLocaleString("default", { month: "short" }),
+      salary: sal ? sal[1] : 0,
+      advance: adv ? adv[1] : 0,
+    };
+  });
+
   return (
     <div className="space-y-10 animate-fadeIn">
-      
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+
+      {/* HEADER (Logout removed from here) */}
+      <div className="flex flex-col sm:flex-row justify-between items-center">
         <h1 className="text-3xl font-bold text-gray-800">Dashboard Overview</h1>
-        <button className="bg-blue-600 text-white px-4 py-2 rounded-lg shadow hover:bg-blue-700 transition flex items-center gap-2">
-          <FileSpreadsheet size={18} /> Generate Report
-        </button>
       </div>
 
-      {/* Stat Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {statsCards.map((item) => {
-          const Icon = item.icon;
-          return (
-            <div
-              key={item.title}
-              className="bg-white shadow-md rounded-xl p-6 flex items-center gap-4 border hover:shadow-lg hover:scale-[1.02] transition-all duration-300"
-            >
-              <div className={`${item.color} p-3 rounded-lg text-white`}>
-                <Icon size={28} />
-              </div>
-              <div className="flex-1">
-                <p className="text-gray-500 text-sm">{item.title}</p>
-                <h2 className="text-2xl font-bold text-gray-800">
-                  {item.value}
-                </h2>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Weekly Attendance Chart */}
-        <div className="bg-white shadow rounded-xl p-8 h-96 border border-dashed flex flex-col">
-          <h2 className="text-lg font-semibold text-gray-700 mb-4">
-            Weekly Attendance Overview
-          </h2>
-          <div className="flex-1">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={weeklyAttendance} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="day" />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="attendance" fill="#3b82f6" radius={[6, 6, 0, 0]} barSize={40} />
-              </BarChart>
-            </ResponsiveContainer>
+      {/* FINANCE SUMMARY */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+        <div className="bg-white p-6 shadow rounded-xl border flex items-center gap-4">
+          <div className="bg-green-600 text-white p-3 rounded-lg">
+            <ArrowDownCircle size={32} />
+          </div>
+          <div>
+            <p className="text-gray-500 text-sm">Total Salary Paid</p>
+            <h2 className="text-3xl font-bold text-green-700">₹{finance.totalSalary}</h2>
           </div>
         </div>
 
-        {/* Project Progress Pie Chart */}
-        <div className="bg-white shadow rounded-xl p-8 h-96 border border-dashed flex flex-col">
-          <h2 className="text-lg font-semibold text-gray-700 mb-4">
-            Project Completion Status
-          </h2>
-          <div className="flex-1 flex items-center justify-center">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={projectProgress}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  outerRadius={110}
-                  fill="#8884d8"
-                  dataKey="value"
-                  label={({ name, percent }) =>
-                    `${name}: ${(percent * 100).toFixed(0)}%`
-                  }
-                >
-                  {projectProgress.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
+        <div className="bg-white p-6 shadow rounded-xl border flex items-center gap-4">
+          <div className="bg-red-600 text-white p-3 rounded-lg">
+            <ArrowUpCircle size={32} />
+          </div>
+          <div>
+            <p className="text-gray-500 text-sm">Total Advance Given</p>
+            <h2 className="text-3xl font-bold text-red-700">₹{finance.totalAdvance}</h2>
+          </div>
+        </div>
+
+        <div className="bg-white p-6 shadow rounded-xl border flex items-center gap-4">
+          <div className="bg-blue-600 text-white p-3 rounded-lg">
+            <IndianRupee size={32} />
+          </div>
+          <div>
+            <p className="text-gray-500 text-sm">Net Balance</p>
+            <h2 className="text-3xl font-bold text-blue-700">₹{finance.balance}</h2>
           </div>
         </div>
       </div>
 
-      {/* ⭐ NEW TASK STATUS PIE CHART */}
-      <div className="bg-white shadow rounded-xl p-8 h-96 border border-dashed flex flex-col">
-        <h2 className="text-lg font-semibold text-gray-700 mb-4">
-          Task Status Summary
+      {/* MONTHLY FINANCE CHART */}
+      <div className="bg-white shadow rounded-xl p-8 border h-96 flex flex-col">
+        <h2 className="text-lg font-semibold mb-4">Monthly Salary vs Advance (Last 6 Months)</h2>
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={financeChartData}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="month" />
+            <YAxis />
+            <Tooltip />
+            <Legend />
+            <Line type="monotone" dataKey="salary" stroke="#10b981" strokeWidth={3} />
+            <Line type="monotone" dataKey="advance" stroke="#ef4444" strokeWidth={3} />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* TOP PAID WORKERS */}
+      <div className="bg-white shadow rounded-xl p-8 border">
+        <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+          <Trophy /> Top Paid Workers
         </h2>
-        <div className="flex-1 flex items-center justify-center">
+
+        {finance.topPaidWorkers.length === 0 ? (
+          <p className="text-gray-500 italic">No data available</p>
+        ) : (
+          <table className="w-full text-left table-auto">
+            <thead className="bg-gray-100">
+              <tr>
+                <th className="p-3 border">Worker</th>
+                <th className="p-3 border">Total Salary</th>
+              </tr>
+            </thead>
+            <tbody>
+              {finance.topPaidWorkers.map((w) => (
+                <tr key={w[0]} className="hover:bg-gray-50">
+                  <td className="p-3 border">{w[1]}</td>
+                  <td className="p-3 border text-green-700 font-bold">₹{w[2]}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {/* WEEKLY ATTENDANCE + PROJECT STATUS */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="bg-white shadow rounded-xl p-8 border h-96 flex flex-col">
+          <h2 className="text-lg font-semibold mb-4">Weekly Attendance Overview</h2>
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={weeklyAttendance}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="day" />
+              <YAxis />
+              <Tooltip />
+              <Bar dataKey="attendance" fill="#3b82f6" barSize={40} radius={[6, 6, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+
+        <div className="bg-white shadow rounded-xl p-8 border h-96 flex flex-col">
+          <h2 className="text-lg font-semibold mb-4">Project Completion Status</h2>
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
-                data={[
-                  { name: "Pending", value: taskSummary.pending },
-                  { name: "In Progress", value: taskSummary.inProgress },
-                  { name: "Completed", value: taskSummary.completed },
-                  { name: "Overdue", value: taskSummary.overdue },
-                ]}
-                cx="50%"
-                cy="50%"
-                outerRadius={110}
-                label={({ name, percent }) =>
-                  `${name}: ${(percent * 100).toFixed(0)}%`
-                }
+                data={projectProgress}
                 dataKey="value"
+                outerRadius={110}
+                label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
               >
-                <Cell fill="#fbbf24" /> {/* Pending */}
-                <Cell fill="#3b82f6" /> {/* In Progress */}
-                <Cell fill="#10b981" /> {/* Completed */}
-                <Cell fill="#ef4444" /> {/* Overdue */}
+                {projectProgress.map((_, index) => (
+                  <Cell key={index} fill={COLORS[index]} />
+                ))}
               </Pie>
               <Tooltip />
               <Legend />
@@ -285,8 +272,33 @@ const Dashboard = ({ refreshKey }) => {
         </div>
       </div>
 
-      {/* Footer */}
-      <div className="text-center text-gray-400 text-sm pt-4">
+      {/* TASK STATUS */}
+      <div className="bg-white shadow rounded-xl p-8 border h-96 flex flex-col">
+        <h2 className="text-lg font-semibold mb-4">Task Status Summary</h2>
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart>
+            <Pie
+              data={[
+                { name: "Pending", value: taskSummary.pending },
+                { name: "In Progress", value: taskSummary.inProgress },
+                { name: "Completed", value: taskSummary.completed },
+                { name: "Overdue", value: taskSummary.overdue },
+              ]}
+              outerRadius={110}
+              dataKey="value"
+            >
+              <Cell fill="#fbbf24" />
+              <Cell fill="#3b82f6" />
+              <Cell fill="#10b981" />
+              <Cell fill="#ef4444" />
+            </Pie>
+            <Tooltip />
+            <Legend />
+          </PieChart>
+        </ResponsiveContainer>
+      </div>
+
+      <div className="text-center text-gray-400 text-sm pb-6">
         © {new Date().getFullYear()} Construction Site Management Dashboard
       </div>
     </div>

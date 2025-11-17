@@ -1,16 +1,16 @@
 import { NavLink } from "react-router-dom";
-import { Home, Users, ClipboardList, Calendar, Settings } from "lucide-react";
+import { Home, Users, ClipboardList, Calendar, Wallet } from "lucide-react";
 
 const Sidebar = () => {
   const menuItems = [
-  { name: "Dashboard", icon: Home, path: "/" },
-  { name: "Workers", icon: Users, path: "/workers" },
-  { name: "Projects", icon: ClipboardList, path: "/projects" },
-  { name: "Tasks", icon: ClipboardList, path: "/tasks" },
-  { name: "Attendance", icon: Calendar, path: "/attendance" },
-  { name: "Settings", icon: Settings, path: "/settings" },
-];
-
+    { name: "Dashboard", icon: Home, path: "/" },
+    { name: "Workers", icon: Users, path: "/workers" },
+    { name: "Projects", icon: ClipboardList, path: "/projects" },
+    { name: "Tasks", icon: ClipboardList, path: "/tasks" },
+    { name: "Attendance", icon: Calendar, path: "/attendance" },
+    { name: "Payments", icon: Wallet, path: "/payments" },
+    // ❌ Settings removed
+  ];
 
   return (
     <div className="w-64 bg-gray-900 text-white flex flex-col">

@@ -8,8 +8,10 @@ import {
   RefreshCcw,
   Edit,
   Trash2,
+  Eye,
 } from "lucide-react";
 import toast from "react-hot-toast";
+import PaymentsByWorker from "../components/PaymentsByWorker"; // ⬅ ADDED
 
 const Workers = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -18,7 +20,9 @@ const Workers = () => {
   const [loading, setLoading] = useState(true);
   const [workers, setWorkers] = useState([]);
   const [selectedWorker, setSelectedWorker] = useState(null);
-  const hasFetched = useRef(false); // ✅ Prevent double-fetch in StrictMode
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false); // ⬅ NEW
+
+  const hasFetched = useRef(false);
 
   const [newWorker, setNewWorker] = useState({
     name: "",
@@ -26,27 +30,25 @@ const Workers = () => {
     ratePerDay: "",
     address: "",
     policeVerified: false,
-    joinedDate: new Date().toISOString().split("T")[0], // ✅ default today
+    joinedDate: new Date().toISOString().split("T")[0],
     aadhaarNumber: "",
-    role: "", // ✅ Added role field
+    role: "",
   });
 
-  // ✅ Fetch all workers
+  // Fetch all workers
   const fetchWorkers = async (showToast = false) => {
     try {
       setLoading(true);
       const res = await axios.get("http://localhost:8080/api/workers");
       setWorkers(res.data);
-      if (showToast) toast.success("✅ Workers refreshed successfully!");
-    } catch (error) {
-      console.error("Error fetching workers:", error);
-      toast.error("❌ Failed to load workers. Check backend connection.");
+      if (showToast) toast.success("Workers refreshed!");
+    } catch {
+      toast.error("Failed to load workers");
     } finally {
       setLoading(false);
     }
   };
 
-  // ✅ Initial Fetch (runs once)
   useEffect(() => {
     if (!hasFetched.current) {
       fetchWorkers(false);
@@ -54,11 +56,11 @@ const Workers = () => {
     }
   }, []);
 
-  // ✅ Add or Update worker
+  // Save worker
   const handleSaveWorker = async (e) => {
     e.preventDefault();
     if (!newWorker.name || !newWorker.phone || !newWorker.ratePerDay) {
-      toast.error("Please fill Name, Phone, and Rate fields!");
+      toast.error("Please fill Name, Phone & Rate!");
       return;
     }
 
@@ -72,32 +74,20 @@ const Workers = () => {
           `http://localhost:8080/api/workers/${selectedWorker.id}`,
           newWorker
         );
-        toast.success("✅ Worker updated successfully!", { id: toastId });
       } else {
         await axios.post("http://localhost:8080/api/workers", newWorker);
-        toast.success("✅ Worker added successfully!", { id: toastId });
       }
 
-      setNewWorker({
-        name: "",
-        phone: "",
-        ratePerDay: "",
-        address: "",
-        policeVerified: false,
-        joinedDate: new Date().toISOString().split("T")[0],
-        aadhaarNumber: "",
-        role: "", // reset role
-      });
+      toast.success("Success!", { id: toastId });
       setIsModalOpen(false);
       setIsEditMode(false);
       fetchWorkers();
-    } catch (error) {
-      console.error("Error saving worker:", error);
-      toast.error("❌ Failed to save worker.");
+    } catch {
+      toast.error("Failed to save worker");
     }
   };
 
-  // ✅ Edit worker
+  // Edit worker
   const handleEdit = (worker) => {
     setSelectedWorker(worker);
     setNewWorker({
@@ -108,28 +98,32 @@ const Workers = () => {
       policeVerified: worker.policeVerified || false,
       joinedDate: worker.joinedDate || new Date().toISOString().split("T")[0],
       aadhaarNumber: worker.aadhaarNumber || "",
-      role: worker.role || "", // load role for edit
+      role: worker.role || "",
     });
     setIsEditMode(true);
     setIsModalOpen(true);
   };
 
-  // ✅ Delete worker
+  // Open Details Modal
+  const handleViewDetails = (worker) => {
+    setSelectedWorker(worker);
+    setIsDetailsModalOpen(true);
+  };
+
+  // Delete worker
   const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this worker?")) return;
+    if (!window.confirm("Delete this worker?")) return;
 
     try {
-      const toastId = toast.loading("Deleting worker...");
+      const toastId = toast.loading("Deleting...");
       await axios.delete(`http://localhost:8080/api/workers/${id}`);
-      toast.success("🗑️ Worker deleted successfully!", { id: toastId });
+      toast.success("Worker deleted!", { id: toastId });
       fetchWorkers();
-    } catch (error) {
-      console.error("Error deleting worker:", error);
-      toast.error("❌ Failed to delete worker.");
+    } catch {
+      toast.error("Failed to delete worker");
     }
   };
 
-  // ✅ Search filter
   const filteredWorkers = workers.filter((w) =>
     w.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -139,14 +133,16 @@ const Workers = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <h1 className="text-3xl font-bold text-gray-800">Workers</h1>
+
         <div className="flex gap-3">
           <button
             onClick={() => fetchWorkers(true)}
-            className="flex items-center gap-2 bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition"
+            className="flex items-center gap-2 bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300"
           >
             <RefreshCcw size={16} />
             Refresh
           </button>
+
           <button
             onClick={() => {
               setIsModalOpen(true);
@@ -159,10 +155,10 @@ const Workers = () => {
                 policeVerified: false,
                 joinedDate: new Date().toISOString().split("T")[0],
                 aadhaarNumber: "",
-                role: "", // reset role
+                role: "",
               });
             }}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg shadow flex items-center gap-2 hover:bg-blue-700 transition"
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg shadow flex items-center gap-2 hover:bg-blue-700"
           >
             <UserPlus size={18} />
             Add Worker
@@ -198,31 +194,25 @@ const Workers = () => {
                 <th className="py-3 px-6">Rate/Day</th>
                 <th className="py-3 px-6">Address</th>
                 <th className="py-3 px-6">Project</th>
-                <th className="py-3 px-6">Role</th> {/* ✅ Added role column */}
+                <th className="py-3 px-6">Role</th>
                 <th className="py-3 px-6">Police Verified</th>
                 <th className="py-3 px-6">Joined Date</th>
                 <th className="py-3 px-6">Aadhaar</th>
                 <th className="py-3 px-6 text-center">Actions</th>
               </tr>
             </thead>
+
             <tbody>
               {filteredWorkers.length > 0 ? (
                 filteredWorkers.map((w) => (
-                  <tr
-                    key={w.id}
-                    className="border-t hover:bg-gray-50 transition text-gray-700"
-                  >
+                  <tr key={w.id} className="border-t hover:bg-gray-50 text-gray-700">
                     <td className="py-3 px-6">{w.id}</td>
-                    <td className="py-3 px-6 font-medium">{w.name || "—"}</td>
-                    <td className="py-3 px-6">{w.phone || "—"}</td>
-                    <td className="py-3 px-6">
-                      {w.ratePerDay ? `₹${w.ratePerDay}` : "—"}
-                    </td>
-                    <td className="py-3 px-6">{w.address || "—"}</td>
-                    <td className="py-3 px-6">
-                      {w.project ? w.project.name : "—"}
-                    </td>
-                    <td className="py-3 px-6">{w.role || "—"}</td> {/* ✅ show role */}
+                    <td className="py-3 px-6">{w.name}</td>
+                    <td className="py-3 px-6">{w.phone}</td>
+                    <td className="py-3 px-6">₹{w.ratePerDay}</td>
+                    <td className="py-3 px-6">{w.address}</td>
+                    <td className="py-3 px-6">{w.project?.name || "—"}</td>
+                    <td className="py-3 px-6">{w.role || "—"}</td>
                     <td className="py-3 px-6">
                       {w.policeVerified ? (
                         <span className="text-green-600 font-semibold">Yes</span>
@@ -230,9 +220,16 @@ const Workers = () => {
                         <span className="text-red-500 font-semibold">No</span>
                       )}
                     </td>
-                    <td className="py-3 px-6">{w.joinedDate || "—"}</td>
-                    <td className="py-3 px-6">{w.aadhaarNumber || "—"}</td>
+                    <td className="py-3 px-6">{w.joinedDate}</td>
+                    <td className="py-3 px-6">{w.aadhaarNumber}</td>
+
                     <td className="py-3 px-6 text-center flex justify-center gap-3">
+                      <button
+                        onClick={() => handleViewDetails(w)}
+                        className="text-green-600 hover:text-green-800"
+                      >
+                        <Eye size={18} />
+                      </button>
                       <button
                         onClick={() => handleEdit(w)}
                         className="text-blue-600 hover:text-blue-800"
@@ -250,10 +247,7 @@ const Workers = () => {
                 ))
               ) : (
                 <tr>
-                  <td
-                    colSpan="11"
-                    className="text-center py-6 text-gray-400 italic"
-                  >
+                  <td colSpan="11" className="text-center py-6 text-gray-400 italic">
                     No workers found.
                   </td>
                 </tr>
@@ -263,7 +257,45 @@ const Workers = () => {
         </div>
       )}
 
-      {/* Add/Edit Worker Modal */}
+      {/* ======================= VIEW DETAILS MODAL ======================= */}
+      {isDetailsModalOpen && selectedWorker && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl w-[95%] max-w-3xl p-6 relative shadow-xl">
+            <button
+              onClick={() => setIsDetailsModalOpen(false)}
+              className="absolute top-3 right-3 text-gray-400 hover:text-gray-600"
+            >
+              <X size={20} />
+            </button>
+
+            <h2 className="text-2xl font-bold mb-2">{selectedWorker.name}</h2>
+            <p className="text-gray-500 mb-4">Worker Details</p>
+
+            {/* Worker Info */}
+            <div className="grid grid-cols-2 gap-4 text-sm mb-6">
+              <div><strong>Phone:</strong> {selectedWorker.phone}</div>
+              <div><strong>Rate/Day:</strong> ₹{selectedWorker.ratePerDay}</div>
+              <div><strong>Role:</strong> {selectedWorker.role}</div>
+              <div><strong>Joined:</strong> {selectedWorker.joinedDate}</div>
+              <div><strong>Address:</strong> {selectedWorker.address}</div>
+              <div><strong>Aadhaar:</strong> {selectedWorker.aadhaarNumber}</div>
+              <div><strong>Project:</strong> {selectedWorker.project?.name || "—"}</div>
+              <div>
+                <strong>Police Verified:</strong>{" "}
+                {selectedWorker.policeVerified ? "Yes" : "No"}
+              </div>
+            </div>
+
+            {/* Payments Section */}
+            <div className="bg-gray-50 p-4 rounded-lg border shadow-inner">
+              <h3 className="text-lg font-semibold mb-3">Payment History</h3>
+              <PaymentsByWorker workerId={selectedWorker.id} />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ======================= ADD/EDIT MODAL ======================= */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-40 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="bg-white rounded-xl shadow-xl p-6 w-[90%] max-w-md relative">
@@ -276,6 +308,7 @@ const Workers = () => {
             <h2 className="text-xl font-bold mb-4 text-gray-800">
               {isEditMode ? "Edit Worker" : "Add New Worker"}
             </h2>
+
             <form className="space-y-4" onSubmit={handleSaveWorker}>
               <input
                 type="text"
@@ -284,8 +317,9 @@ const Workers = () => {
                 onChange={(e) =>
                   setNewWorker({ ...newWorker, name: e.target.value })
                 }
-                className="w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full border rounded-lg px-3 py-2"
               />
+
               <input
                 type="text"
                 placeholder="Phone Number"
@@ -293,8 +327,9 @@ const Workers = () => {
                 onChange={(e) =>
                   setNewWorker({ ...newWorker, phone: e.target.value })
                 }
-                className="w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full border rounded-lg px-3 py-2"
               />
+
               <input
                 type="number"
                 placeholder="Rate Per Day"
@@ -305,8 +340,9 @@ const Workers = () => {
                     ratePerDay: e.target.value,
                   })
                 }
-                className="w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full border rounded-lg px-3 py-2"
               />
+
               <input
                 type="text"
                 placeholder="Address"
@@ -314,8 +350,9 @@ const Workers = () => {
                 onChange={(e) =>
                   setNewWorker({ ...newWorker, address: e.target.value })
                 }
-                className="w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full border rounded-lg px-3 py-2"
               />
+
               <input
                 type="text"
                 placeholder="Aadhaar Number"
@@ -326,9 +363,9 @@ const Workers = () => {
                     aadhaarNumber: e.target.value,
                   })
                 }
-                className="w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full border rounded-lg px-3 py-2"
               />
-              {/* ✅ Role Input */}
+
               <input
                 type="text"
                 placeholder="Role"
@@ -336,19 +373,16 @@ const Workers = () => {
                 onChange={(e) =>
                   setNewWorker({ ...newWorker, role: e.target.value })
                 }
-                className="w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full border rounded-lg px-3 py-2"
               />
-              {/* ✅ Joined Date Picker */}
+
               <input
                 type="date"
                 value={newWorker.joinedDate}
                 onChange={(e) =>
-                  setNewWorker({
-                    ...newWorker,
-                    joinedDate: e.target.value,
-                  })
+                  setNewWorker({ ...newWorker, joinedDate: e.target.value })
                 }
-                className="w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full border rounded-lg px-3 py-2"
               />
 
               <div className="flex items-center gap-2">
@@ -369,13 +403,13 @@ const Workers = () => {
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 text-gray-500 hover:text-gray-700"
+                  className="px-4 py-2 text-gray-500"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="ml-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+                  className="ml-2 bg-blue-600 text-white px-4 py-2 rounded-lg"
                 >
                   {isEditMode ? "Update Worker" : "Save Worker"}
                 </button>
@@ -384,6 +418,7 @@ const Workers = () => {
           </div>
         </div>
       )}
+
     </div>
   );
 };

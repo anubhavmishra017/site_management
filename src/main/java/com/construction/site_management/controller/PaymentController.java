@@ -20,7 +20,7 @@ public class PaymentController {
         this.paymentService = paymentService;
     }
 
-    // ADMIN adds a payment
+    // Add Payment
     @PostMapping("/add")
     public ResponseEntity<Payment> addPayment(@RequestBody Map<String, Object> req) {
         Long workerId = Long.valueOf(req.get("workerId").toString());
@@ -31,9 +31,43 @@ public class PaymentController {
         return ResponseEntity.ok(paymentService.addPayment(workerId, type, amount, note));
     }
 
-    // WORKER sees his payment history
+    // Worker Payments
     @GetMapping("/worker/{workerId}")
     public ResponseEntity<List<Payment>> getPaymentsByWorker(@PathVariable Long workerId) {
         return ResponseEntity.ok(paymentService.getPaymentsByWorker(workerId));
+    }
+
+    // All Payments (Admin)
+    @GetMapping
+    public ResponseEntity<List<Payment>> getAllPayments() {
+        return ResponseEntity.ok(paymentService.getAllPayments());
+    }
+
+    // Auto Salary (single)
+    @PostMapping("/auto-salary/{workerId}")
+    public ResponseEntity<Payment> autoGenerateSalary(@PathVariable Long workerId) {
+        return ResponseEntity.ok(paymentService.generateMonthlySalary(workerId));
+    }
+
+    // Auto Salary (all)
+    @PostMapping("/auto-salary/all")
+    public ResponseEntity<String> autoGenerateSalaryForAll() {
+        paymentService.generateSalaryForAllWorkers();
+        return ResponseEntity.ok("Salary generated for all workers");
+    }
+
+    // Delete Payment
+    @DeleteMapping("/{id}")
+    public ResponseEntity<String> deletePayment(@PathVariable Long id) {
+        paymentService.deletePayment(id);
+        return ResponseEntity.ok("Payment deleted successfully");
+    }
+
+    // ==========================
+    // FINANCE SUMMARY (NEW)
+    // ==========================
+    @GetMapping("/summary")
+    public ResponseEntity<Map<String, Object>> financeSummary() {
+        return ResponseEntity.ok(paymentService.getFinanceSummary());
     }
 }

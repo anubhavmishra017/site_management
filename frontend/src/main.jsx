@@ -4,6 +4,8 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 import Layout from "./components/Layout";
 import "./index.css";
+import AdminLogin from "./pages/AdminLogin";
+import AdminProtectedRoute from "./components/AdminProtectedRoute";
 
 /* ===== ADMIN (lazy loaded) ===== */
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -11,15 +13,17 @@ const Workers = lazy(() => import("./pages/Workers"));
 const Projects = lazy(() => import("./pages/Projects"));
 const Attendance = lazy(() => import("./pages/Attendance"));
 const Tasks = lazy(() => import("./pages/Tasks"));
+const Payments = lazy(() => import("./pages/Payments"));
 const Settings = lazy(() => import("./pages/Settings"));
 
-/* ===== WORKER PANEL IMPORTS (added safely) ===== */
+/* ===== WORKER PANEL IMPORTS ===== */
 import WorkerLogin from "./worker/WorkerLogin";
 import WorkerResetPassword from "./worker/WorkerResetPassword";
 import WorkerDashboard from "./worker/WorkerDashboard";
 import WorkerAttendance from "./worker/WorkerAttendance";
 import WorkerTasks from "./worker/WorkerTasks";
 import WorkerPayments from "./worker/WorkerPayments";
+import WorkerProfile from "./worker/WorkerProfile";
 import ProtectedWorkerRoute from "./worker/ProtectedWorkerRoute";
 
 /* ===== Loading Screen ===== */
@@ -63,23 +67,36 @@ ReactDOM.createRoot(document.getElementById("root")).render(
         <Suspense fallback={<LoadingScreen />}>
 
           <Routes>
-
-            {/* ================= ADMIN ROUTES ================= */}
-            <Route path="/" element={<Layout />}>
+            {/* ================= ADMIN ROUTES (PROTECTED) ================= */}
+            <Route
+              path="/"
+              element={
+                <AdminProtectedRoute>
+                  <Layout />
+                </AdminProtectedRoute>
+              }
+            >
               <Route index element={<Dashboard />} />
               <Route path="workers" element={<Workers />} />
               <Route path="projects" element={<Projects />} />
               <Route path="attendance" element={<Attendance />} />
               <Route path="tasks" element={<Tasks />} />
               <Route path="settings" element={<Settings />} />
+              <Route path="payments" element={<Payments />} />
             </Route>
 
             {/* ================= WORKER ROUTES ================= */}
             <Route path="/worker/login" element={<WorkerLogin />} />
 
+            <Route path="/worker/reset-password" element={<WorkerResetPassword />} />
+
             <Route
-              path="/worker/reset-password"
-              element={<WorkerResetPassword />}
+              path="/worker/profile"
+              element={
+                <ProtectedWorkerRoute>
+                  <WorkerProfile />
+                </ProtectedWorkerRoute>
+              }
             />
 
             <Route
@@ -118,6 +135,8 @@ ReactDOM.createRoot(document.getElementById("root")).render(
               }
             />
 
+            {/* ================= ADMIN LOGIN ================= */}
+            <Route path="/admin/login" element={<AdminLogin />} />
           </Routes>
 
         </Suspense>

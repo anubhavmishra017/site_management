@@ -16,6 +16,7 @@ public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
     List<Attendance> findByWorkerId(Long workerId);
 
     void deleteByWorkerId(Long workerId);
+    
 
     List<Attendance> findByProjectId(Long projectId);
 

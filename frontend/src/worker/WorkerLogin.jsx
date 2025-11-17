@@ -16,20 +16,26 @@ const WorkerLogin = () => {
     }
 
     try {
-      const { data } = await axios.post("http://localhost:8080/api/auth/worker/login", {
-        phone,
-        password,
-      });
+      const { data } = await axios.post(
+        "http://localhost:8080/api/auth/worker/login",
+        { phone, password }
+      );
 
-      // data: { worker: {...}, mustResetPassword: true/false }
+      // data = { worker: {...}, mustResetPassword: true/false }
       const { worker, mustResetPassword } = data;
+
       if (!worker) {
         toast.error("Login failed");
         return;
       }
 
-      // store full worker object
-      const workerToStore = { ...worker, phone }; // include phone for convenience
+      // 🔥 FIX: Save mustResetPassword to localStorage also
+      const workerToStore = {
+        ...worker,
+        phone,
+        mustResetPassword
+      };
+
       setWorker(workerToStore);
 
       if (mustResetPassword) {

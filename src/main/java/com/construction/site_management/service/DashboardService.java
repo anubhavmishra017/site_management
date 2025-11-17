@@ -2,15 +2,12 @@ package com.construction.site_management.service;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
+import java.util.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.construction.site_management.repository.AttendanceRepository;
+import com.construction.site_management.repository.PaymentRepository;
 import com.construction.site_management.repository.ProjectRepository;
 import com.construction.site_management.repository.WorkerRepository;
 
@@ -26,21 +23,25 @@ public class DashboardService {
     @Autowired
     private AttendanceRepository attendanceRepository;
 
+    @Autowired
+    private PaymentRepository paymentRepository;
+
     public Map<String, Object> getDashboardSummary() {
+
         Map<String, Object> summary = new HashMap<>();
 
+        // ====================================================
+        // BASIC COUNTS
+        // ====================================================
         long totalWorkers = workerRepository.count();
         long totalProjects = projectRepository.count();
+        long activeProjects = projectRepository.countByStatus("Active");
+        long completedProjects = projectRepository.countByStatus("Completed");
+        long pendingProjects = projectRepository.countByStatus("Pending");
         long totalAttendanceRecords = attendanceRepository.count();
 
         Double totalOvertimeHours = attendanceRepository.sumOvertimeHours();
         if (totalOvertimeHours == null) totalOvertimeHours = 0.0;
-
-        long activeProjects = projectRepository.countByStatus("Active");
-
-        // Currently assuming you also have completed/pending projects
-        long completedProjects = projectRepository.countByStatus("Completed");
-        long pendingProjects = projectRepository.countByStatus("Pending");
 
         Double avgAttendance = attendanceRepository.findAverageAttendancePerDay();
         if (avgAttendance == null) avgAttendance = 0.0;
@@ -54,39 +55,109 @@ public class DashboardService {
         summary.put("totalOvertimeHours", totalOvertimeHours);
         summary.put("averageDailyAttendance", avgAttendance);
 
-        // Weekly attendance for chart
-        LocalDate endDate = LocalDate.now();
-        LocalDate startDate = endDate.minusDays(6); // last 7 days
+        // ====================================================
+        // WEEKLY ATTENDANCE SUMMARY (for chart)
+        // ====================================================
+        LocalDate end = LocalDate.now();
+        LocalDate start = end.minusDays(6);
 
-        List<Object[]> weeklyRaw = attendanceRepository.findAttendanceBetweenDates(startDate, endDate);
+        List<Object[]> raw = attendanceRepository.findAttendanceBetweenDates(start, end);
 
-        // Format for frontend chart
-        List<Map<String, Object>> weeklyAttendance = new ArrayList<>();
-
-        // Initialize map with all days to ensure no missing day in chart
-        Map<DayOfWeek, Double> dayMap = new HashMap<>();
+        Map<DayOfWeek, Double> map = new HashMap<>();
         for (int i = 0; i < 7; i++) {
-            dayMap.put(startDate.plusDays(i).getDayOfWeek(), 0.0);
+            map.put(start.plusDays(i).getDayOfWeek(), 0.0);
         }
 
-        // Fill values from query
-        for (Object[] record : weeklyRaw) {
-            String dayName = (String) record[0];       // e.g., "Monday"
-            Double value = (Double) record[1];         // average attendance
-            DayOfWeek day = DayOfWeek.valueOf(dayName.toUpperCase());
-            dayMap.put(day, value);
+        for (Object[] row : raw) {
+            String dayName = (String) row[0];
+            Double val = (Double) row[1];
+            map.put(DayOfWeek.valueOf(dayName.toUpperCase()), val);
         }
 
-        // Convert map to list with proper order
+        List<Map<String, Object>> weekly = new ArrayList<>();
         for (int i = 0; i < 7; i++) {
-            LocalDate date = startDate.plusDays(i);
-            Map<String, Object> dayData = new HashMap<>();
-            dayData.put("day", date.getDayOfWeek().name().substring(0,3)); // Mon, Tue, ...
-            dayData.put("attendance", dayMap.get(date.getDayOfWeek()));
-            weeklyAttendance.add(dayData);
+            LocalDate d = start.plusDays(i);
+            Map<String, Object> entry = new HashMap<>();
+            entry.put("day", d.getDayOfWeek().name().substring(0, 3)); // Mon, Tue...
+            entry.put("attendance", map.get(d.getDayOfWeek()));
+            weekly.add(entry);
         }
 
-        summary.put("weeklyAttendance", weeklyAttendance);
+        summary.put("weeklyAttendance", weekly);
+
+        // ====================================================
+        // ⭐ FINANCE SUMMARY (used in updated Dashboard)
+        // ====================================================
+
+        Double totalSalary = paymentRepository.findAll().stream()
+                .filter(p -> "Salary".equalsIgnoreCase(p.getType()))
+                .mapToDouble(p -> p.getAmount())
+                .sum();
+
+        Double totalAdvance = paymentRepository.findAll().stream()
+                .filter(p -> "Advance".equalsIgnoreCase(p.getType()))
+                .mapToDouble(p -> p.getAmount())
+                .sum();
+
+        summary.put("totalSalary", totalSalary);
+        summary.put("totalAdvance", totalAdvance);
+        summary.put("balance", totalSalary - totalAdvance);
+
+        // -----------------------------
+        // Last 6 months salary/advance
+        // -----------------------------
+        List<Object[]> salaryMonthly = new ArrayList<>();
+        List<Object[]> advanceMonthly = new ArrayList<>();
+
+        LocalDate today = LocalDate.now();
+        for (int i = 5; i >= 0; i--) {
+            int month = today.minusMonths(i).getMonthValue();
+
+            double sal = paymentRepository.findAll().stream()
+                    .filter(p -> "Salary".equalsIgnoreCase(p.getType()))
+                    .filter(p -> p.getDate() != null && p.getDate().getMonthValue() == month)
+                    .mapToDouble(p -> p.getAmount()).sum();
+
+            double adv = paymentRepository.findAll().stream()
+                    .filter(p -> "Advance".equalsIgnoreCase(p.getType()))
+                    .filter(p -> p.getDate() != null && p.getDate().getMonthValue() == month)
+                    .mapToDouble(p -> p.getAmount()).sum();
+
+            salaryMonthly.add(new Object[]{month, sal});
+            advanceMonthly.add(new Object[]{month, adv});
+        }
+
+        summary.put("salaryMonthly", salaryMonthly);
+        summary.put("advanceMonthly", advanceMonthly);
+
+        // -----------------------------
+        // TOP PAID WORKERS
+        // -----------------------------
+        Map<Long, Double> salaryMap = new HashMap<>();
+
+        paymentRepository.findAll().forEach(p -> {
+            if ("Salary".equalsIgnoreCase(p.getType())) {
+                salaryMap.put(
+                        p.getWorker().getId(),
+                        salaryMap.getOrDefault(p.getWorker().getId(), 0.0) + p.getAmount()
+                );
+            }
+        });
+
+        List<Object[]> topWorkers = new ArrayList<>();
+
+        salaryMap.entrySet().stream()
+                .sorted((a, b) -> Double.compare(b.getValue(), a.getValue()))
+                .limit(5)
+                .forEach(e -> {
+                    topWorkers.add(new Object[]{
+                            e.getKey(),
+                            workerRepository.findById(e.getKey()).get().getName(),
+                            e.getValue()
+                    });
+                });
+
+        summary.put("topPaidWorkers", topWorkers);
 
         return summary;
     }

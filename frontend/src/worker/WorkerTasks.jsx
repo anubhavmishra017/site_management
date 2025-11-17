@@ -56,9 +56,11 @@ const WorkerTasks = () => {
   }, [tasks]);
 
   // --------------------------
-  // DEADLINE COLOR LOGIC
+  // DEADLINE COLOR LOGIC (FIXED)
   // --------------------------
-  const getDeadlineState = (deadline) => {
+  const getDeadlineState = (deadline, status) => {
+    if (status === "Completed") return "ok"; // 🔥 FIX ADDED
+
     if (!deadline) return "none";
     const dl = new Date(deadline);
     const today = new Date();
@@ -111,16 +113,9 @@ const WorkerTasks = () => {
 
   return (
     <div className="p-4 space-y-8">
-      {/* -------------------------- */}
-      {/* HEADER */}
-      {/* -------------------------- */}
-      <h1 className="text-3xl font-bold text-gray-800">
-        Your Tasks
-      </h1>
+      <h1 className="text-3xl font-bold text-gray-800">Your Tasks</h1>
 
-      {/* -------------------------- */}
-      {/* TODAY'S TASKS */}
-      {/* -------------------------- */}
+      {/* TODAY TASKS */}
       <div className="bg-white rounded-xl shadow p-4">
         <h2 className="text-xl font-semibold mb-3 flex items-center gap-2">
           <Clock size={20} /> Today's Work
@@ -130,12 +125,9 @@ const WorkerTasks = () => {
           <p className="text-gray-500">No tasks due today.</p>
         ) : (
           todayTasks.map((t) => {
-            const state = getDeadlineState(t.deadline);
+            const state = getDeadlineState(t.deadline, t.status); // 🔥 FIX ADDED
             return (
-              <div
-                key={t.id}
-                className="border rounded-lg p-3 mb-3 bg-gray-50"
-              >
+              <div key={t.id} className="border rounded-lg p-3 mb-3 bg-gray-50">
                 <div className="font-bold">{t.taskName}</div>
                 <div className="text-sm text-gray-600">
                   {t.project?.name}
@@ -155,7 +147,6 @@ const WorkerTasks = () => {
                   </span>
                 </div>
 
-                {/* Big Buttons */}
                 {t.status === "Pending" && (
                   <button
                     onClick={() => updateStatus(t.id, "In Progress")}
@@ -164,6 +155,7 @@ const WorkerTasks = () => {
                     Start
                   </button>
                 )}
+
                 {t.status === "In Progress" && (
                   <button
                     onClick={() => updateStatus(t.id, "Completed")}
@@ -172,6 +164,7 @@ const WorkerTasks = () => {
                     Done
                   </button>
                 )}
+
                 {t.status === "Completed" && (
                   <div className="mt-3 text-green-700 font-bold">
                     ✔ Completed
@@ -183,33 +176,28 @@ const WorkerTasks = () => {
         )}
       </div>
 
-      {/* -------------------------- */}
-      {/* CALENDAR VIEW */}
-      {/* -------------------------- */}
+      {/* CALENDAR */}
       <div className="bg-white rounded-xl shadow p-4">
         <h2 className="text-xl font-semibold mb-3 flex items-center gap-2">
           <CalendarDays size={20} /> Calendar
         </h2>
 
-        {/* Month Navigation */}
         <div className="flex justify-between mb-2">
           <button onClick={() => changeMonth(-1)}>◀</button>
           <div className="font-bold">
-            {selectedDate.toLocaleString("default", {
-              month: "long",
-            })}{" "}
+            {selectedDate.toLocaleString("default", { month: "long" })}{" "}
             {selectedDate.getFullYear()}
           </div>
           <button onClick={() => changeMonth(1)}>▶</button>
         </div>
 
-        {/* Calendar Grid */}
         <div className="grid grid-cols-7 text-center text-sm">
           {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
             <div key={d} className="font-bold py-1">
               {d}
             </div>
           ))}
+
           {generateCalendar().map((d, idx) =>
             d ? (
               <div
@@ -234,7 +222,6 @@ const WorkerTasks = () => {
           )}
         </div>
 
-        {/* Tasks for selected date */}
         <div className="mt-4">
           <h3 className="font-semibold mb-2">
             Tasks on {selectedDateStr}:
@@ -252,9 +239,7 @@ const WorkerTasks = () => {
         </div>
       </div>
 
-      {/* -------------------------- */}
       {/* KANBAN VIEW */}
-      {/* -------------------------- */}
       <div className="bg-white rounded-xl shadow p-4">
         <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
           <CheckCircle size={20} /> All Tasks
@@ -263,15 +248,10 @@ const WorkerTasks = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           {/* Pending */}
           <div className="p-3 border rounded">
-            <h3 className="font-bold mb-2 text-yellow-700">
-              Pending
-            </h3>
+            <h3 className="font-bold mb-2 text-yellow-700">Pending</h3>
             {pending.length === 0 && <p>No tasks</p>}
             {pending.map((t) => (
-              <div
-                key={t.id}
-                className="bg-yellow-50 border rounded p-2 mb-2"
-              >
+              <div key={t.id} className="bg-yellow-50 border rounded p-2 mb-2">
                 <div className="font-semibold">{t.taskName}</div>
                 <button
                   onClick={() => updateStatus(t.id, "In Progress")}
@@ -285,15 +265,10 @@ const WorkerTasks = () => {
 
           {/* In Progress */}
           <div className="p-3 border rounded">
-            <h3 className="font-bold mb-2 text-blue-700">
-              In Progress
-            </h3>
+            <h3 className="font-bold mb-2 text-blue-700">In Progress</h3>
             {progress.length === 0 && <p>No tasks</p>}
             {progress.map((t) => (
-              <div
-                key={t.id}
-                className="bg-blue-50 border rounded p-2 mb-2"
-              >
+              <div key={t.id} className="bg-blue-50 border rounded p-2 mb-2">
                 <div className="font-semibold">{t.taskName}</div>
                 <button
                   onClick={() => updateStatus(t.id, "Completed")}
@@ -307,19 +282,12 @@ const WorkerTasks = () => {
 
           {/* Completed */}
           <div className="p-3 border rounded">
-            <h3 className="font-bold mb-2 text-green-700">
-              Completed
-            </h3>
+            <h3 className="font-bold mb-2 text-green-700">Completed</h3>
             {completed.length === 0 && <p>No tasks</p>}
             {completed.map((t) => (
-              <div
-                key={t.id}
-                className="bg-green-50 border rounded p-2 mb-2"
-              >
+              <div key={t.id} className="bg-green-50 border rounded p-2 mb-2">
                 <div className="font-semibold">{t.taskName}</div>
-                <div className="text-green-700 font-bold mt-2">
-                  ✔ Done
-                </div>
+                <div className="text-green-700 font-bold mt-2">✔ Done</div>
               </div>
             ))}
           </div>
